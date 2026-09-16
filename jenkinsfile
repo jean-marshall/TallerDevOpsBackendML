@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        //datos de la app
         IMAGE_NAME = 'mi-app-web'
         CONTAINER_NAME = 'mi-contenedor-web'
 
@@ -22,9 +23,9 @@ pipeline {
 
         stage('Construir Imagen Docker') {
             steps {
-                script {
-                    docker.build("${IMAGE_NAME}:latest")
-                }
+                echo 'Construyendo la imagen Docker...'
+
+                sh "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
 
