@@ -15,7 +15,7 @@ pipeline {
 
         stage('Descargar código') {
             steps {
-                git branch: 'main',
+                git branch: 'master',
                     url: 'https://github.com/jean-marshall/TallerDevOpsBackendML.git'
             }
         }
