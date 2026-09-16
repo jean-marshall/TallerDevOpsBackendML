@@ -1,8 +1,8 @@
 # Imagen del servicio de inferencia BarkVision.
-# Build (desde la carpeta ml/):
-#   docker build -f serving/Dockerfile -t barkvision-serving .
-# Run local (montando el registro de modelos como volumen):
-#   docker run -p 8080:8080 -v "%cd%/serving/models:/models" barkvision-serving   (PowerShell: ${PWD})
+# Build (desde la raíz del repo, que es lo que hace Jenkins):
+#   docker build -t mi-app-web .
+# Run local:
+#   docker run -p 80:8080 mi-app-web
 FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -17,13 +17,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Deps primero, para aprovechar la caché de capas de Docker.
-COPY serving/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Código del servicio.
-COPY serving/app.py serving/model_loader.py ./
+COPY app.py model_loader.py ./
+
+# Modelos horneados en la imagen (el deploy por SSH no monta volúmenes).
+# model_loader.py lee desde MODELS_DIR=/models.
+COPY models/ /models/
 
 EXPOSE 8080
 
-# Cloud Run inyecta el puerto en $PORT; localmente cae a 8080.
+# El contenedor escucha en $PORT (8080). Publicá con -p 80:8080.
 CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}"]
