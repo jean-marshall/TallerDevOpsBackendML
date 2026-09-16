@@ -9,7 +9,7 @@ pipeline {
         // Datos de tu VM
         VM_IP = '192.168.56.101'
         VM_USER = 'jeanmarshall'
-        SSH_CREDS = 'DSTHCqIdGlXNHRC8NKfAfM1luIwomeZZtkViDJqYM1Y'
+        SSH_CREDS = 'ssh-vm-mint'
     }
 
     stages {
