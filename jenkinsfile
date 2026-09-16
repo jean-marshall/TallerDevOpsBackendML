@@ -1,0 +1,75 @@
+pipeline {
+    agent any
+
+    environment {
+        // Nombre de la imagen Docker que vas a construir
+        IMAGE_NAME = "mi-aplicacion-web"
+        IMAGE_TAG  = "latest" // Puedes cambiarlo por un parámetro manual ej: "${params.VERSION}"
+        
+        // Datos del PC Ubuntu Destino
+        SSH_CREDENTIALS_ID = 'ssh-pc-destino' // El ID que creaste en el Paso 1
+        TARGET_IP          = '192.168.1.50'   // Cambia por la IP real del PC Ubuntu
+        TARGET_USER        = 'usuario_ubuntu'  // Cambia por el usuario real
+        CONTAINER_NAME     = 'app-desplegada'
+        PORT_MAPPING       = '80:80'           // PuertoContenedor:PuertoHost
+    }
+
+    stages {
+        stage('1. Construir Imagen') {
+            steps {
+                echo 'Construyendo la imagen Docker en el servidor Jenkins...'
+                // Se asume que tienes un Dockerfile en la raíz de tu repositorio/espacio de trabajo
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('2. Exportar Imagen') {
+            steps {
+                echo 'Exportando imagen a un archivo .tar para transferirla...'
+                sh "docker save ${IMAGE_NAME}:${IMAGE_TAG} > ${IMAGE_NAME}.tar"
+            }
+        }
+
+        stage('3. Desplegar en PC Ubuntu Destino via SSH') {
+            steps {
+                // El bloque sshagent carga la llave privada de Jenkins de forma segura
+                sshagent([SSH_CREDENTIALS_ID]) {
+                    echo 'Transfiriendo la imagen al PC Destino...'
+                    // Desactivar estrictamente el chequeo de host para redes locales controladas
+                    sh "scp -o StrictHostKeyChecking=no ${IMAGE_NAME}.tar ${TARGET_USER}@${TARGET_IP}:/tmp/"
+
+                    echo 'Cargando y levantando el contenedor en el PC Destino...'
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_IP} '
+                            # 1. Cargar la imagen en el Docker local del PC Destino
+                            docker load < /tmp/${IMAGE_NAME}.tar
+                            
+                            # 2. Detener y borrar el contenedor viejo si ya existe
+                            docker stop ${CONTAINER_NAME} || true
+                            docker rm ${CONTAINER_NAME} || true
+                            
+                            # 3. Correr el nuevo contenedor
+                            docker run -d --name ${CONTAINER_NAME} -p ${PORT_MAPPING} ${IMAGE_NAME}:${IMAGE_TAG}
+                            
+                            # 4. Limpieza del archivo temporal
+                            rm /tmp/${IMAGE_NAME}.tar
+                        '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Limpiando archivos temporales en el servidor Jenkins...'
+            sh "rm -f ${IMAGE_NAME}.tar || true"
+        }
+        success {
+            echo '¡Despliegue automático completado con éxito!'
+        }
+        failure {
+            echo 'El pipeline falló. Revisa los logs anteriores.'
+        }
+    }
+}

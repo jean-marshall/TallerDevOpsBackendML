@@ -1,0 +1,9 @@
+# Dependencias del servicio de inferencia (imagen Docker / Cloud Run).
+# tensorflow-cpu: más liviano que tensorflow (sin libs de GPU), ideal para servir.
+tensorflow-cpu==2.17.0
+keras==3.5.0
+numpy==1.26.4
+Pillow==12.3.0
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
